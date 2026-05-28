@@ -17,6 +17,9 @@
 
   <!-- Estilos de la aplicación -->
   <link rel="stylesheet" href="css/styles.css">
+
+  <!-- SheetJS — exportación a Excel -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -59,7 +62,12 @@
   ========================= -->
   <section id="tab-tablero" role="tabpanel" aria-labelledby="tab-tablero">
     <div id="stats-grid" class="grid3" style="margin-bottom:1.5rem;"></div>
-    <h2>Pares en proceso activo</h2>
+    <div class="row" style="margin-bottom:1rem;">
+      <h2 style="flex:1; margin:0;">Pares en proceso activo</h2>
+      <button class="btn btn-sm" onclick="exportarExcel()" title="Exportar todos los datos a Excel">
+        <i class="ti ti-file-spreadsheet" aria-hidden="true"></i> Exportar Excel
+      </button>
+    </div>
     <div id="tablero-list"></div>
     <div id="historial-section" style="margin-top:2rem;"></div>
   </section>

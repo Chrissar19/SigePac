@@ -907,6 +907,113 @@ function copiarCorreo() {
 }
 
 /* ===========================================
+   MÓDULO: EXPORTACIÓN A EXCEL
+   =========================================== */
+
+/** Calcula el ancho óptimo de cada columna según el contenido */
+function autoWidth(datos) {
+  if (!datos.length) return [];
+  return Object.keys(datos[0]).map(key => ({
+    wch: Math.min(
+      60,
+      Math.max(key.length, ...datos.map(row => String(row[key] ?? '').length)) + 2
+    )
+  }));
+}
+
+/** Exporta todos los datos a un archivo Excel con 3 hojas */
+function exportarExcel() {
+  if (!window.XLSX) {
+    alert('La librería de Excel no está disponible. Verifica tu conexión e intenta de nuevo.');
+    return;
+  }
+
+  const wb = XLSX.utils.book_new();
+
+  // ── Hoja 1: Pares evaluadores ─────────────────────────
+  const datosPares = pares.map(p => {
+    const activos    = procesos.filter(pr => pr.parId === p.id && pr.etapa < 6).length;
+    const completados = procesos.filter(pr => pr.parId === p.id && pr.etapa === 6).length;
+    return {
+      'Nombre':              p.nombre        || '',
+      'Correo':              p.email         || '',
+      'Institución':         p.inst          || '',
+      'Área de expertise':   p.area          || '',
+      'Nivel':               p.nivel         || '',
+      'CvLAC / SCIENTI':     p.scienti       || '',
+      'Notas':               p.notas         || '',
+      'Fecha de registro':   p.fechaReg      || '',
+      'Procesos activos':    activos,
+      'Procesos completados': completados,
+    };
+  });
+
+  const wsPares = XLSX.utils.json_to_sheet(datosPares.length ? datosPares : [{}]);
+  wsPares['!cols'] = autoWidth(datosPares.length ? datosPares : [{}]);
+  XLSX.utils.book_append_sheet(wb, wsPares, 'Pares evaluadores');
+
+  // ── Hoja 2: Trabajos (conceptos) ─────────────────────
+  const datosConceptos = conceptos.map(c => {
+    const ps = procesos.filter(pr => pr.conceptoId === c.id);
+    return {
+      'Título del trabajo':  c.titulo        || '',
+      'Docente autor':       c.autor         || '',
+      'Categoría de ascenso': c.cat          || '',
+      'Tipo':                c.tipo          || '',
+      'Área temática':       c.area          || '',
+      'Fecha de registro':   c.fecha         || '',
+      'Pares asignados':     ps.length,
+      'Estado': ps.length === 0
+        ? 'Sin asignar'
+        : ps.every(pr => pr.etapa === 6)
+          ? 'Completado'
+          : 'En proceso',
+    };
+  });
+
+  const wsConceptos = XLSX.utils.json_to_sheet(datosConceptos.length ? datosConceptos : [{}]);
+  wsConceptos['!cols'] = autoWidth(datosConceptos.length ? datosConceptos : [{}]);
+  XLSX.utils.book_append_sheet(wb, wsConceptos, 'Trabajos');
+
+  // ── Hoja 3: Seguimiento de procesos ──────────────────
+  const datosProcesos = procesos.map(pr => {
+    const par    = pares.find(p => p.id === pr.parId);
+    const con    = conceptos.find(c => c.id === pr.conceptoId);
+    const fechas = getFechas(pr);
+    const docs   = getDocs(pr);
+
+    const fila = {
+      'Par evaluador':    par ? par.nombre  : '(eliminado)',
+      'Correo del par':   par ? par.email   : '',
+      'Trabajo evaluado': con ? con.titulo  : '(eliminado)',
+      'Tipo':             con ? con.tipo    : '',
+      'Etapa actual':     ETAPAS[pr.etapa],
+      'Documentos':       `${docs.filter(Boolean).length}/${DOCS.length}`,
+    };
+
+    // Fecha de cada etapa
+    ETAPAS.forEach((etapa, i) => {
+      fila[`Fecha — ${etapa}`] = fechas[i] || '';
+    });
+
+    // Estado de cada documento
+    DOCS.forEach((doc, i) => {
+      fila[`Doc: ${doc.nombre}`] = docs[i] ? 'Sí' : 'No';
+    });
+
+    return fila;
+  });
+
+  const wsProcesos = XLSX.utils.json_to_sheet(datosProcesos.length ? datosProcesos : [{}]);
+  wsProcesos['!cols'] = autoWidth(datosProcesos.length ? datosProcesos : [{}]);
+  XLSX.utils.book_append_sheet(wb, wsProcesos, 'Seguimiento');
+
+  // ── Descargar ─────────────────────────────────────────
+  const fecha = new Date().toLocaleDateString('es-CO').replace(/\//g, '-');
+  XLSX.writeFile(wb, `SigePac_${fecha}.xlsx`);
+}
+
+/* ===========================================
    INICIALIZACIÓN
    =========================================== */
 
