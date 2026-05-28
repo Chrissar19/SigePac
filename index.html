@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Sistema de gestión de pares evaluadores para trabajos de ascenso y productividad académica — Vicerrectoría Académica, Universidad de Nariño">
+  <meta name="author" content="Vicerrectoría Académica, Udenar">
+  <title>SigePac — Gestión de Pares Evaluadores · Udenar</title>
+
+  <!-- Fuente tipográfica -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <!-- Íconos Tabler Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
+
+  <!-- Estilos de la aplicación -->
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ========================
+       ENCABEZADO
+  ========================= -->
+  <header class="app-header">
+    <i class="ti ti-school" aria-hidden="true" style="font-size:28px; color:#265531;"></i>
+    <div>
+      <h1 style="color:#265531;">SigePac</h1>
+      <p>Gestión de pares evaluadores — Vicerrectoría Académica, Udenar</p>
+    </div>
+  </header>
+
+  <!-- ========================
+       NAVEGACIÓN POR PESTAÑAS
+  ========================= -->
+  <nav class="tabs" role="tablist" aria-label="Módulos de la aplicación">
+    <button class="tab active" role="tab" aria-selected="true"  data-tab="tablero"  onclick="showTab('tablero')">
+      <i class="ti ti-layout-dashboard" aria-hidden="true"></i> Tablero
+    </button>
+    <button class="tab" role="tab" aria-selected="false" data-tab="pares"    onclick="showTab('pares')">
+      <i class="ti ti-users" aria-hidden="true"></i> Pares
+    </button>
+    <button class="tab" role="tab" aria-selected="false" data-tab="conceptos" onclick="showTab('conceptos')">
+      <i class="ti ti-file-text" aria-hidden="true"></i> Conceptos
+    </button>
+    <button class="tab" role="tab" aria-selected="false" data-tab="correos"  onclick="showTab('correos')">
+      <i class="ti ti-mail" aria-hidden="true"></i> Correos
+    </button>
+    <button class="tab" role="tab" aria-selected="false" data-tab="nuevo"    onclick="showTab('nuevo')">
+      <i class="ti ti-plus" aria-hidden="true"></i> Nuevo par
+    </button>
+  </nav>
+
+  <!-- ========================
+       TAB: TABLERO
+  ========================= -->
+  <section id="tab-tablero" role="tabpanel" aria-labelledby="tab-tablero">
+    <div id="stats-grid" class="grid3" style="margin-bottom:1.5rem;"></div>
+    <h2>Pares en proceso activo</h2>
+    <div id="tablero-list"></div>
+    <div id="historial-section" style="margin-top:2rem;"></div>
+  </section>
+
+  <!-- ========================
+       TAB: PARES
+  ========================= -->
+  <section id="tab-pares" class="hidden" role="tabpanel" aria-labelledby="tab-pares">
+
+    <div class="search-box row">
+      <input
+        id="search-par"
+        type="search"
+        placeholder="Buscar por nombre, área o correo…"
+        style="flex:1;"
+        oninput="renderPares()"
+        aria-label="Buscar pares evaluadores"
+      >
+      <select
+        id="filter-area"
+        style="width:190px;"
+        onchange="renderPares()"
+        aria-label="Filtrar por área temática"
+      >
+        <option value="">Todas las áreas</option>
+      </select>
+    </div>
+
+    <div id="pares-list"></div>
+  </section>
+
+  <!-- ========================
+       TAB: CONCEPTOS
+  ========================= -->
+  <section id="tab-conceptos" class="hidden" role="tabpanel" aria-labelledby="tab-conceptos">
+
+    <div class="row" style="margin-bottom:1rem;">
+      <h2 style="flex:1; margin:0;">Trabajos de ascenso / productividad</h2>
+      <button class="btn btn-sm" onclick="showNuevoConcepto()">
+        <i class="ti ti-plus" aria-hidden="true"></i> Nuevo
+      </button>
+    </div>
+
+    <!-- Formulario para nuevo concepto (oculto por defecto) -->
+    <div id="nuevo-concepto-form" class="card hidden">
+      <h3 id="nc-form-titulo">Registrar nuevo trabajo</h3>
+
+      <label for="nc-titulo">Título del trabajo</label>
+      <input id="nc-titulo" type="text" placeholder="Título completo del trabajo">
+
+      <label for="nc-autor">Docente autor</label>
+      <input id="nc-autor" type="text" placeholder="Nombre completo del docente">
+
+      <label for="nc-cat">Categoría de ascenso</label>
+      <input id="nc-cat" type="text" placeholder="Ej: Titular A, Asociado B…">
+
+      <label for="nc-tipo">Tipo</label>
+      <select id="nc-tipo">
+        <option>Ascenso</option>
+        <option>Productividad académica</option>
+      </select>
+
+      <label for="nc-area">Área temática</label>
+      <input id="nc-area" type="text" placeholder="Ej: Ingeniería, Ciencias Sociales…">
+
+      <div class="row" style="margin-top:1rem;">
+        <button id="btn-guardar-concepto" class="btn btn-primary" onclick="guardarConcepto()">
+          <i class="ti ti-device-floppy" aria-hidden="true"></i> Guardar
+        </button>
+        <button id="btn-cancelar-concepto" class="btn" onclick="cancelarEdicionConcepto()">
+          Cancelar
+        </button>
+      </div>
+    </div>
+
+    <div id="conceptos-list"></div>
+  </section>
+
+  <!-- ========================
+       TAB: CORREOS
+  ========================= -->
+  <section id="tab-correos" class="hidden" role="tabpanel" aria-labelledby="tab-correos">
+    <h2>Generar correo</h2>
+
+    <label for="plantilla-sel">Plantilla</label>
+    <select id="plantilla-sel" onchange="generarCorreo()">
+      <option value="inv">Invitación al par</option>
+      <option value="conf">Confirmación de recibido (resultado)</option>
+    </select>
+
+    <label for="correo-par">Par evaluador</label>
+    <select id="correo-par" onchange="generarCorreo()">
+      <option value="">— Seleccionar par —</option>
+    </select>
+
+    <label for="correo-concepto">Trabajo evaluado</label>
+    <select id="correo-concepto" onchange="generarCorreo()">
+      <option value="">— Seleccionar trabajo —</option>
+    </select>
+
+    <!-- Campo extra solo para plantilla de invitación -->
+    <div id="correo-extra" class="hidden">
+      <label for="correo-cat">Categoría de ascenso</label>
+      <input id="correo-cat" type="text" placeholder="Ej: Titular A" oninput="generarCorreo()">
+    </div>
+
+    <div style="margin-top:1rem;">
+      <div class="etapa-label">Vista previa del correo</div>
+      <div id="correo-preview" class="email-box" aria-live="polite" aria-atomic="true">
+        Selecciona un par y un trabajo para generar el correo.
+      </div>
+      <div class="copy-row">
+        <button class="btn btn-sm" onclick="copiarCorreo()">
+          <i class="ti ti-copy" aria-hidden="true"></i> Copiar correo
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================
+       TAB: NUEVO PAR
+  ========================= -->
+  <section id="tab-nuevo" class="hidden" role="tabpanel" aria-labelledby="tab-nuevo">
+    <div class="card">
+      <h2 id="form-par-titulo">Registrar nuevo par evaluador</h2>
+
+      <div class="grid2">
+        <div>
+          <label for="n-nombre">Nombre completo</label>
+          <input id="n-nombre" type="text" placeholder="Dr(a). Nombre Apellido">
+        </div>
+        <div>
+          <label for="n-email">Correo electrónico</label>
+          <input id="n-email" type="email" placeholder="correo@universidad.edu.co">
+        </div>
+      </div>
+
+      <div class="grid2">
+        <div>
+          <label for="n-inst">Institución</label>
+          <input id="n-inst" type="text" placeholder="Universidad / Centro de investigación">
+        </div>
+        <div>
+          <label for="n-area">Área(s) de expertise</label>
+          <input id="n-area" type="text" placeholder="Ej: Biología molecular, Derecho penal">
+        </div>
+      </div>
+
+      <div class="grid2">
+        <div>
+          <label for="n-nivel">Nivel de estudios</label>
+          <select id="n-nivel">
+            <option>Doctor(a)</option>
+            <option>Magíster</option>
+            <option>Especialista</option>
+          </select>
+        </div>
+        <div>
+          <label for="n-scienti">
+            Perfil SCIENTI / CvLAC
+            <span class="label-opt">(opcional)</span>
+          </label>
+          <input id="n-scienti" type="url" placeholder="https://scienti.minciencias.gov.co/…">
+        </div>
+      </div>
+
+      <label for="n-notas">Notas</label>
+      <textarea id="n-notas" placeholder="Observaciones relevantes sobre el par…"></textarea>
+
+      <div class="row" style="margin-top:1rem;">
+        <button id="btn-guardar-par" class="btn btn-primary" onclick="guardarPar()">
+          <i class="ti ti-device-floppy" aria-hidden="true"></i> Guardar par
+        </button>
+        <button id="btn-limpiar-par" class="btn" onclick="limpiarFormPar()">
+          <i class="ti ti-eraser" aria-hidden="true"></i> Limpiar
+        </button>
+        <button id="btn-cancelar-par" class="btn hidden" onclick="cancelarEdicionPar()">
+          Cancelar edición
+        </button>
+      </div>
+
+      <!-- Mensaje de confirmación / error del formulario -->
+      <div id="form-msg" class="hidden" role="alert" aria-live="assertive"></div>
+    </div>
+  </section>
+
+<!-- Modal: Asignar par a concepto -->
+<div id="modal-overlay" class="modal-overlay hidden" onclick="cerrarModal(event)">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-titulo">
+    <div class="modal-header">
+      <div>
+        <h3 id="modal-titulo">Asignar par a concepto</h3>
+        <p id="modal-par-nombre" class="par-meta" style="margin-top:2px;"></p>
+      </div>
+      <button class="btn btn-sm" onclick="cerrarModal()" aria-label="Cerrar modal">
+        <i class="ti ti-x" aria-hidden="true"></i>
+      </button>
+    </div>
+    <div id="modal-body" class="modal-body">
+      <!-- Se puebla dinámicamente -->
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" onclick="confirmarAsignar()">
+        <i class="ti ti-file-plus" aria-hidden="true"></i> Asignar
+      </button>
+      <button class="btn" onclick="cerrarModal()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+</div><!-- /.app -->
+
+<!-- Lógica de la aplicación -->
+<script src="js/app.js"></script>
+</body>
+</html>

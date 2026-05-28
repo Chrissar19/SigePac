@@ -1,0 +1,15 @@
+# Archivo original (reemplazado por index.html)
+gestion_pares_evaluadores.html
+
+# Carpeta interna de Claude Code
+.claude/
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editores
+.vscode/
+*.swp
+*.swo
