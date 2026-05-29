@@ -31,7 +31,7 @@ https://chrissar19.github.io/SigePac/
 - [x] Fecha por etapa
 - [x] Historial de completados
 - [x] Publicado en GitHub Pages
-- [ ] Exportación a Excel con SheetJS
+- [x] Exportación a Excel con SheetJS
 - [ ] Base de datos Supabase (reemplaza localStorage)
 - [ ] Integración OneDrive institucional (Microsoft Graph API)
 
