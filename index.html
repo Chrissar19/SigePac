@@ -205,16 +205,8 @@
         </div>
       </div>
 
-      <div class="grid2">
-        <div>
-          <label for="n-inst">Institución</label>
-          <input id="n-inst" type="text" placeholder="Universidad / Centro de investigación">
-        </div>
-        <div>
-          <label for="n-area">Área(s) de expertise</label>
-          <input id="n-area" type="text" placeholder="Ej: Biología molecular, Derecho penal">
-        </div>
-      </div>
+      <label for="n-area">Área(s) de expertise</label>
+      <input id="n-area" type="text" placeholder="Ej: Biología molecular, Derecho penal">
 
       <div class="grid2">
         <div>
@@ -253,6 +245,40 @@
       <div id="form-msg" class="hidden" role="alert" aria-live="assertive"></div>
     </div>
   </section>
+
+<!-- Modal: Registrar resultado de evaluación -->
+<div id="modal-resultado-overlay" class="modal-overlay hidden" onclick="cerrarModalResultado(event)">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-res-titulo">
+    <div class="modal-header">
+      <div>
+        <h3 id="modal-res-titulo">Resultado de evaluación</h3>
+        <p id="modal-res-subtitulo" class="par-meta" style="margin-top:2px;"></p>
+      </div>
+      <button class="btn btn-sm" onclick="cerrarModalResultado()" aria-label="Cerrar">
+        <i class="ti ti-x" aria-hidden="true"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <label for="res-tipo">Resultado</label>
+      <select id="res-tipo" onchange="toggleNotaResultado()">
+        <option value="">— Seleccionar resultado —</option>
+        <option value="aceptado">Aceptado</option>
+        <option value="rechazado">Rechazado</option>
+        <option value="correcciones">Enviado a correcciones</option>
+      </select>
+      <div id="res-nota-div" class="hidden">
+        <label for="res-nota" style="margin-top:12px;">Nota <span class="label-opt">(0.0 – 5.0)</span></label>
+        <input id="res-nota" type="number" min="0" max="5" step="0.1" placeholder="Ej: 4.5">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" onclick="guardarResultado()">
+        <i class="ti ti-device-floppy" aria-hidden="true"></i> Guardar
+      </button>
+      <button class="btn" onclick="cerrarModalResultado()">Cancelar</button>
+    </div>
+  </div>
+</div>
 
 <!-- Modal: Asignar par a concepto -->
 <div id="modal-overlay" class="modal-overlay hidden" onclick="cerrarModal(event)">

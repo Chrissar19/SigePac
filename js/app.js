@@ -68,10 +68,11 @@ const checklistsAbiertos = new Set();
    ESTADO DE EDICIÓN (UI, no persiste)
    =========================================== */
 
-let editandoPar          = null; // ID del par en edición, o null
-let editandoConcepto     = null; // ID del concepto en edición, o null
-let parIdParaAsignar     = null; // ID del par seleccionado en el modal
+let editandoPar            = null; // ID del par en edición, o null
+let editandoConcepto       = null; // ID del concepto en edición, o null
+let parIdParaAsignar       = null; // ID del par seleccionado en el modal
 let conceptoIdSeleccionado = null; // ID del concepto elegido en el modal
+let prIdParaResultado      = null; // ID del proceso cuyo resultado se está registrando
 
 /* ===========================================
    ESTADO DE LA APLICACIÓN
@@ -196,7 +197,6 @@ function guardarPar() {
     if (par) {
       par.nombre  = nombre;
       par.email   = email;
-      par.inst    = document.getElementById('n-inst').value.trim();
       par.area    = document.getElementById('n-area').value.trim();
       par.nivel   = document.getElementById('n-nivel').value;
       par.scienti = document.getElementById('n-scienti').value.trim();
@@ -214,7 +214,6 @@ function guardarPar() {
       id:       uid(),
       nombre,
       email,
-      inst:     document.getElementById('n-inst').value.trim(),
       area:     document.getElementById('n-area').value.trim(),
       nivel:    document.getElementById('n-nivel').value,
       scienti:  document.getElementById('n-scienti').value.trim(),
@@ -229,7 +228,7 @@ function guardarPar() {
 
 /** Limpia el formulario de par y restablece el modo creación */
 function limpiarFormPar() {
-  ['n-nombre', 'n-email', 'n-inst', 'n-area', 'n-scienti', 'n-notas']
+  ['n-nombre', 'n-email', 'n-area', 'n-scienti', 'n-notas']
     .forEach(id => { document.getElementById(id).value = ''; });
   document.getElementById('n-nivel').value = 'Doctor(a)';
 }
@@ -243,7 +242,6 @@ function editarPar(id) {
 
   document.getElementById('n-nombre').value  = par.nombre;
   document.getElementById('n-email').value   = par.email;
-  document.getElementById('n-inst').value    = par.inst    || '';
   document.getElementById('n-area').value    = par.area    || '';
   document.getElementById('n-nivel').value   = par.nivel   || 'Doctor(a)';
   document.getElementById('n-scienti').value = par.scienti || '';
@@ -330,8 +328,7 @@ function renderPares() {
             ${p.area ? `<span class="tag-area">${esc(p.area)}</span>` : ''}
           </div>
           <div class="par-meta">
-            ${esc(p.nivel)} · ${esc(p.inst) || '—'} ·
-            <a href="mailto:${esc(p.email)}">${esc(p.email)}</a>
+            ${esc(p.nivel)} · <a href="mailto:${esc(p.email)}">${esc(p.email)}</a>
           </div>
           ${p.scienti ? `
           <div class="par-meta" style="margin-top:2px;">
@@ -438,7 +435,8 @@ function confirmarAsignar() {
     fechaInicio: hoy,
     notas:       '',
     docs:        new Array(DOCS.length).fill(false),
-    fechas:      [hoy, ...new Array(ETAPAS.length - 1).fill(null)]
+    fechas:      [hoy, ...new Array(ETAPAS.length - 1).fill(null)],
+    resultado:   { tipo: null, nota: null }
   });
 
   save();
@@ -590,6 +588,16 @@ function renderConceptos() {
           <i class="ti ti-checklist" aria-hidden="true"></i>
           ${recibidos}/${DOCS.length}
         </button>
+        ${(() => {
+          const res = getResultado(pr);
+          if (res) return `
+            <span class="badge ${res.badge}" style="cursor:pointer;" onclick="abrirModalResultado('${pr.id}')" title="Editar resultado">
+              ${esc(res.texto)}
+            </span>`;
+          return `<button class="btn btn-sm" onclick="abrirModalResultado('${pr.id}')" title="Registrar resultado">
+            <i class="ti ti-clipboard-check" aria-hidden="true"></i>
+          </button>`;
+        })()}
         ${pr.etapa < 6
           ? `<button class="btn btn-sm" onclick="avanzarEtapa('${pr.id}')">Avanzar ▶</button>`
           : '<span class="badge badge-comp">✓ Completo</span>'
@@ -815,6 +823,87 @@ function renderHistorial() {
 }
 
 /* ===========================================
+   MÓDULO: RESULTADO DE EVALUACIÓN
+   =========================================== */
+
+/** Retorna el texto legible del resultado y la clase de badge */
+function getResultado(pr) {
+  const r = pr.resultado;
+  if (!r || !r.tipo) return null;
+  const textos = {
+    aceptado:     r.nota ? `Aceptado — ${r.nota}` : 'Aceptado',
+    rechazado:    'Rechazado',
+    correcciones: 'Enviado a correcciones',
+  };
+  const badges = {
+    aceptado:     'badge-acep',
+    rechazado:    'badge-rechaz',
+    correcciones: 'badge-cal',
+  };
+  return { texto: textos[r.tipo] || r.tipo, badge: badges[r.tipo] || '' };
+}
+
+/** Abre el modal para registrar el resultado de un proceso */
+function abrirModalResultado(prId) {
+  const pr  = procesos.find(p => p.id === prId);
+  const con = pr ? conceptos.find(c => c.id === pr.conceptoId) : null;
+  const par = pr ? pares.find(p => p.id === pr.parId) : null;
+  if (!pr) return;
+
+  prIdParaResultado = prId;
+
+  // Pre-rellenar si ya hay resultado
+  const r = pr.resultado || {};
+  document.getElementById('res-tipo').value = r.tipo || '';
+  document.getElementById('res-nota').value = r.nota || '';
+
+  // Subtítulo con contexto
+  document.getElementById('modal-res-subtitulo').textContent =
+    `${par ? par.nombre : ''} — ${con ? con.titulo : ''}`;
+
+  // Mostrar campo nota solo para productividad académica
+  const esProductividad = con && con.tipo === 'Productividad académica';
+  document.getElementById('res-nota-div').classList.toggle('hidden', !esProductividad);
+
+  document.getElementById('modal-resultado-overlay').classList.remove('hidden');
+}
+
+/** Muestra/oculta el campo de nota según tipo y concepto */
+function toggleNotaResultado() {
+  const pr  = procesos.find(p => p.id === prIdParaResultado);
+  const con = pr ? conceptos.find(c => c.id === pr.conceptoId) : null;
+  const esProductividad = con && con.tipo === 'Productividad académica';
+  const esAceptado = document.getElementById('res-tipo').value === 'aceptado';
+  document.getElementById('res-nota-div').classList.toggle('hidden', !(esProductividad && esAceptado));
+}
+
+/** Cierra el modal de resultado */
+function cerrarModalResultado(e) {
+  if (e && e.target !== e.currentTarget) return;
+  document.getElementById('modal-resultado-overlay').classList.add('hidden');
+  prIdParaResultado = null;
+}
+
+/** Guarda el resultado del proceso */
+function guardarResultado() {
+  const tipo = document.getElementById('res-tipo').value;
+  if (!tipo) { alert('Selecciona un resultado.'); return; }
+
+  const pr  = procesos.find(p => p.id === prIdParaResultado);
+  const con = pr ? conceptos.find(c => c.id === pr.conceptoId) : null;
+  if (!pr) return;
+
+  const nota = (con && con.tipo === 'Productividad académica' && tipo === 'aceptado')
+    ? document.getElementById('res-nota').value.trim()
+    : null;
+
+  pr.resultado = { tipo, nota };
+  save();
+  cerrarModalResultado();
+  renderConceptos();
+}
+
+/* ===========================================
    MÓDULO: CORREOS
    =========================================== */
 
@@ -930,44 +1019,71 @@ function exportarExcel() {
 
   const wb = XLSX.utils.book_new();
 
-  // ── Hoja 1: Pares evaluadores ─────────────────────────
-  const datosPares = pares.map(p => {
-    const activos    = procesos.filter(pr => pr.parId === p.id && pr.etapa < 6).length;
-    const completados = procesos.filter(pr => pr.parId === p.id && pr.etapa === 6).length;
-    return {
-      'Nombre':              p.nombre        || '',
-      'Correo':              p.email         || '',
-      'Institución':         p.inst          || '',
-      'Área de expertise':   p.area          || '',
-      'Nivel':               p.nivel         || '',
-      'CvLAC / SCIENTI':     p.scienti       || '',
-      'Notas':               p.notas         || '',
-      'Fecha de registro':   p.fechaReg      || '',
-      'Procesos activos':    activos,
-      'Procesos completados': completados,
-    };
+  // ── Hoja 1: Pares y evaluaciones (vista principal) ───
+  // Una fila por proceso. Pares sin procesos aparecen igual con columnas vacías.
+  const filasMain = [];
+
+  pares.forEach(p => {
+    const procesosDelPar = procesos.filter(pr => pr.parId === p.id);
+    const activos = procesosDelPar.filter(pr => pr.etapa < 6).length;
+
+    if (!procesosDelPar.length) {
+      filasMain.push({
+        'Evaluador':          p.nombre    || '',
+        'Correo':             p.email     || '',
+        'Notas':              p.notas     || '',
+        'Fecha de registro':  p.fechaReg  || '',
+        'Procesos activos':   0,
+        'Trabajo evaluado':   '',
+        'Tipo':               '',
+        'Categoría':          '',
+        'Etapa actual':       '',
+        'Resultado':          '',
+        'Nota':               '',
+      });
+    } else {
+      procesosDelPar.forEach(pr => {
+        const con = conceptos.find(c => c.id === pr.conceptoId);
+        const res = pr.resultado || {};
+        const resTexto = res.tipo === 'aceptado'    ? 'Aceptado'
+                       : res.tipo === 'rechazado'   ? 'Rechazado'
+                       : res.tipo === 'correcciones'? 'Enviado a correcciones'
+                       : '';
+        filasMain.push({
+          'Evaluador':         p.nombre                   || '',
+          'Correo':            p.email                    || '',
+          'Notas':             p.notas                    || '',
+          'Fecha de registro': p.fechaReg                 || '',
+          'Procesos activos':  activos,
+          'Trabajo evaluado':  con ? con.titulo           : '(eliminado)',
+          'Tipo':              con ? con.tipo              : '',
+          'Categoría':         con ? con.cat               : '',
+          'Etapa actual':      ETAPAS[pr.etapa]           || '',
+          'Resultado':         resTexto,
+          'Nota':              res.nota                   || '',
+        });
+      });
+    }
   });
 
-  const wsPares = XLSX.utils.json_to_sheet(datosPares.length ? datosPares : [{}]);
-  wsPares['!cols'] = autoWidth(datosPares.length ? datosPares : [{}]);
-  XLSX.utils.book_append_sheet(wb, wsPares, 'Pares evaluadores');
+  const wsMain = XLSX.utils.json_to_sheet(filasMain.length ? filasMain : [{}]);
+  wsMain['!cols'] = autoWidth(filasMain.length ? filasMain : [{}]);
+  XLSX.utils.book_append_sheet(wb, wsMain, 'Pares y evaluaciones');
 
   // ── Hoja 2: Trabajos (conceptos) ─────────────────────
   const datosConceptos = conceptos.map(c => {
     const ps = procesos.filter(pr => pr.conceptoId === c.id);
     return {
-      'Título del trabajo':  c.titulo        || '',
-      'Docente autor':       c.autor         || '',
-      'Categoría de ascenso': c.cat          || '',
-      'Tipo':                c.tipo          || '',
-      'Área temática':       c.area          || '',
-      'Fecha de registro':   c.fecha         || '',
-      'Pares asignados':     ps.length,
+      'Título del trabajo':   c.titulo || '',
+      'Docente autor':        c.autor  || '',
+      'Categoría de ascenso': c.cat    || '',
+      'Tipo':                 c.tipo   || '',
+      'Área temática':        c.area   || '',
+      'Fecha de registro':    c.fecha  || '',
+      'Pares asignados':      ps.length,
       'Estado': ps.length === 0
         ? 'Sin asignar'
-        : ps.every(pr => pr.etapa === 6)
-          ? 'Completado'
-          : 'En proceso',
+        : ps.every(pr => pr.etapa === 6) ? 'Completado' : 'En proceso',
     };
   });
 
@@ -975,38 +1091,26 @@ function exportarExcel() {
   wsConceptos['!cols'] = autoWidth(datosConceptos.length ? datosConceptos : [{}]);
   XLSX.utils.book_append_sheet(wb, wsConceptos, 'Trabajos');
 
-  // ── Hoja 3: Seguimiento de procesos ──────────────────
+  // ── Hoja 3: Seguimiento detallado (etapas + documentos)
   const datosProcesos = procesos.map(pr => {
     const par    = pares.find(p => p.id === pr.parId);
     const con    = conceptos.find(c => c.id === pr.conceptoId);
     const fechas = getFechas(pr);
     const docs   = getDocs(pr);
-
-    const fila = {
-      'Par evaluador':    par ? par.nombre  : '(eliminado)',
-      'Correo del par':   par ? par.email   : '',
-      'Trabajo evaluado': con ? con.titulo  : '(eliminado)',
-      'Tipo':             con ? con.tipo    : '',
+    const fila   = {
+      'Evaluador':        par ? par.nombre : '(eliminado)',
+      'Trabajo evaluado': con ? con.titulo : '(eliminado)',
       'Etapa actual':     ETAPAS[pr.etapa],
       'Documentos':       `${docs.filter(Boolean).length}/${DOCS.length}`,
     };
-
-    // Fecha de cada etapa
-    ETAPAS.forEach((etapa, i) => {
-      fila[`Fecha — ${etapa}`] = fechas[i] || '';
-    });
-
-    // Estado de cada documento
-    DOCS.forEach((doc, i) => {
-      fila[`Doc: ${doc.nombre}`] = docs[i] ? 'Sí' : 'No';
-    });
-
+    ETAPAS.forEach((etapa, i) => { fila[`Fecha — ${etapa}`] = fechas[i] || ''; });
+    DOCS.forEach((doc, i)    => { fila[`Doc: ${doc.nombre}`] = docs[i] ? 'Sí' : 'No'; });
     return fila;
   });
 
   const wsProcesos = XLSX.utils.json_to_sheet(datosProcesos.length ? datosProcesos : [{}]);
   wsProcesos['!cols'] = autoWidth(datosProcesos.length ? datosProcesos : [{}]);
-  XLSX.utils.book_append_sheet(wb, wsProcesos, 'Seguimiento');
+  XLSX.utils.book_append_sheet(wb, wsProcesos, 'Seguimiento detallado');
 
   // ── Descargar ─────────────────────────────────────────
   const fecha = new Date().toLocaleDateString('es-CO').replace(/\//g, '-');
